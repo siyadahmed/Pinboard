@@ -4,19 +4,23 @@ A remote MCP server that lets Claude (Claude.ai, Cowork, Claude Desktop, Claude 
 manage tasks on your Pinboard directly — add tasks, add sub-tasks, move
 things between columns, and list what's there.
 
-It's purpose-built for this board only: six tools (`list_boards`,
-`list_tasks`, `add_task`, `add_subtask`, `update_task`, `delete_task`) that
-mirror what the web UI does, instead of exposing a general-purpose
+It's purpose-built for this board only: seven tools (`list_boards`,
+`list_tasks`, `add_task`, `add_subtask`, `update_task`, `move_task`,
+`delete_task`) that mirror what the web UI does, instead of exposing a general-purpose
 Supabase/SQL connector with much broader access. Changes show up live in the
 board via its realtime sync.
 
 ## Boards
 
 The connector acts as one Pinboard account, set by `MCP_USER_EMAIL`, and can
-only reach boards that account is a member of. `list_boards` shows them;
-`list_tasks` and `add_task` take an optional `board` (name or id) and default
-to your personal board — the oldest board you own. Sub-tasks always go on
-their parent's board.
+only reach boards that account is a member of. `list_boards` shows them, with
+each board's areas; `list_tasks` and `add_task` take an optional `board` (name
+or id) and default to your personal board — the oldest board you own.
+
+Areas belong to each board, so tools take an area by **name** and check it
+against that board. `move_task` moves a top-level task and its sub-tasks to
+another board, keeping the area if the destination has one with the same name.
+Sub-tasks always share their parent's board and area.
 
 ## How access is enforced
 

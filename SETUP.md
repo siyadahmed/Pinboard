@@ -79,13 +79,65 @@ half-migrating.
 Expected output: `anon_policies = 0`, `orphan_tasks = 0`, and your full task
 count.
 
-## 6. Your wife signs up
+## 6. Later migrations
 
-She opens the same URL and enters her own email. Signups are open, so she
-gets an account and — via the trigger — her own empty board. She cannot see
-yours; board membership is only ever explicit.
+Run these in order, each in the SQL Editor. All are safe to re-run.
 
-## 7. The Claude connector
+- `003_board_invites.sql` — invite someone to a board by email, before or
+  after they've signed up.
+- `004_member_area_visibility.sql` — superseded by 005; still run it so the
+  history replays cleanly.
+- `005_per_board_areas.sql` — each board manages its own areas; tasks can move
+  between boards. **Changes live data**: existing boards keep their six areas
+  and every task keeps its area. Deploy the matching app and connector straight
+  after it — they read the new columns.
+
+Before running a new migration against the live project, run the replay test
+in `supabase/tests`.
+
+## 7. Share a board
+
+Signups are open: anyone who signs in gets their own private board. To share
+a board as well, create it and invite them. Fill in the placeholders and run
+this; nothing in it is saved to the repo. It works whether or not they've
+signed up yet.
+
+```sql
+do $$
+declare
+  v_owner_email  text := 'YOUR-EMAIL';
+  v_member_email text := 'THEIR-EMAIL';
+  v_board_name   text := 'Household';
+  v_owner uuid; v_member uuid; v_board uuid;
+begin
+  select id into v_owner from auth.users where lower(email) = lower(v_owner_email);
+  if v_owner is null then raise exception 'No account for %', v_owner_email; end if;
+
+  select b.id into v_board from public.boards b
+  join public.board_members m on m.board_id = b.id and m.user_id = v_owner and m.role = 'owner'
+  where b.name = v_board_name limit 1;
+  if v_board is null then
+    insert into public.boards (name, created_by) values (v_board_name, v_owner) returning id into v_board;
+    insert into public.board_members (board_id, user_id, role) values (v_board, v_owner, 'owner');
+  end if;
+
+  select id into v_member from auth.users where lower(email) = lower(v_member_email);
+  if v_member is not null then
+    insert into public.board_members (board_id, user_id, role)
+    values (v_board, v_member, 'member') on conflict (board_id, user_id) do nothing;
+    raise notice 'Added % to %', v_member_email, v_board_name;
+  else
+    insert into public.board_invites (board_id, email, role, invited_by)
+    values (v_board, v_member_email, 'member', v_owner) on conflict (board_id, lower(email)) do nothing;
+    raise notice 'Invited % — they join % when they sign up', v_member_email, v_board_name;
+  end if;
+end $$;
+```
+
+A new board starts with one area, "General". Its owner sets up the rest in
+**Board settings**.
+
+## 8. The Claude connector
 
 The connector (`mcp-server/`) reads and writes with a Supabase secret key
 scoped in code to one account's boards. It needs two Worker secrets beyond
