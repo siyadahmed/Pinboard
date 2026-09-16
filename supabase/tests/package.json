@@ -1,0 +1,7 @@
+{
+  "name": "pinboard-migration-tests",
+  "private": true,
+  "description": "Replays supabase/migrations on an in-process Postgres (PGlite) and checks data and access rules.",
+  "scripts": { "test": "node migrations.test.js" },
+  "dependencies": { "@electric-sql/pglite": "0.5.8" }
+}
