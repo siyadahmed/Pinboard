@@ -19,12 +19,19 @@
     --text:#1c3a52;      /* prussian chart ink */
     --muted:#3f5a67;     /* faded ink — notes, labels */
     --muted-2:#5f5e4d;   /* pencil grey — tertiary marks */
-    --youtube:#a8402f;   /* madder red */
-    --consulting:#2f5d7a;/* chart indigo */
-    --skill:#6d4b7c;     /* murex plum */
-    --hobby:#3f7a5f;     /* verdigris */
-    --invest:#96702a;    /* brass */
-    --other:#6f7f83;     /* slate */
+    /* Area inks. Boards pick area colours from this fixed set, so every
+       choice stays legible (≥3:1 on cards and columns) and on-theme. */
+    --ink-madder:#a8402f;
+    --ink-sepia:#7b5134;
+    --ink-brass:#96702a;
+    --ink-olive:#6b6a2c;
+    --ink-verdigris:#3f7a5f;
+    --ink-indigo:#2f5d7a;
+    --ink-murex:#6d4b7c;
+    --ink-slate:#66767b;
+    --danger:var(--ink-madder);
+    --focus:var(--ink-indigo);
+    --ok:var(--ink-verdigris);
     --radius:10px;
   }
   *{box-sizing:border-box;}
@@ -56,11 +63,11 @@
   .quickadd{flex:1 1 480px;display:flex;gap:8px;flex-wrap:wrap;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:10px;}
   .quickadd input[type=text]{flex:1 1 240px;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;color:var(--text);padding:9px 12px;font-size:14px;font-family:'Spectral',Georgia,serif;}
   .quickadd input[type=text]::placeholder{color:var(--muted-2);opacity:.85;}
-  .quickadd input[type=text]:focus{outline:2px solid var(--consulting);outline-offset:1px;border-color:var(--consulting);}
+  .quickadd input[type=text]:focus{outline:2px solid var(--focus);outline-offset:1px;border-color:var(--focus);}
   select{background:var(--panel-2);border:1px solid var(--line);color:var(--text);border-radius:7px;padding:9px 10px;font-size:13px;font-family:'Spectral',Georgia,serif;}
-  select:focus{outline:2px solid var(--consulting);outline-offset:1px;}
+  select:focus{outline:2px solid var(--focus);outline-offset:1px;}
   .btn{background:var(--text);color:var(--bg);border:none;border-radius:7px;padding:9px 16px;font-weight:600;font-size:13px;cursor:pointer;font-family:'Spectral',Georgia,serif;white-space:nowrap;}
-  .btn:focus-visible,.card-actions button:focus-visible,.card-progress:focus-visible,.card-notes:focus-visible{outline:2px solid var(--consulting);outline-offset:2px;}
+  .btn:focus-visible,.card-actions button:focus-visible,.card-progress:focus-visible,.card-notes:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
   .btn:hover{opacity:.88;}
   .btn-ghost{background:transparent;color:var(--muted);border:1px solid var(--line);}
   .iobar{display:flex;gap:8px;}
@@ -80,7 +87,7 @@
   .subtree{display:flex;flex-direction:column;gap:5px;margin-left:9px;padding-left:11px;border-left:1px solid var(--line);}
   .empty{color:var(--muted-2);font-size:12px;text-align:center;padding:20px 6px;border:1px dashed var(--line);border-radius:8px;}
 
-  .card{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--other);border-radius:8px;padding:10px 10px 8px;cursor:grab;}
+  .card{background:var(--panel-2);border:1px solid var(--line);border-left:3px solid var(--ink-slate);border-radius:8px;padding:10px 10px 8px;cursor:grab;}
   .card:active{cursor:grabbing;}
   .card.dragging{opacity:.4;}
   .card-parent{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;color:var(--muted-2);margin:0 0 4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
@@ -117,9 +124,39 @@
   .modal-field input,.modal-field textarea{width:100%;background:var(--bg);border:1px solid var(--line);border-radius:7px;color:var(--text);padding:9px 11px;font-size:14px;line-height:1.45;font-family:'Spectral',Georgia,serif;}
   .modal-field textarea{min-height:94px;resize:vertical;}
   .modal-field input::placeholder,.modal-field textarea::placeholder{color:var(--muted-2);opacity:.8;}
-  .modal-field input:focus,.modal-field textarea:focus{outline:2px solid var(--consulting);outline-offset:1px;border-color:var(--consulting);}
+  .modal-field input:focus,.modal-field textarea:focus{outline:2px solid var(--focus);outline-offset:1px;border-color:var(--focus);}
   .modal-actions{display:flex;justify-content:flex-end;gap:8px;}
-  .btn-danger{background:var(--youtube);color:var(--bg);}
+  .btn-danger{background:var(--danger);color:var(--bg);}
+  .modal-field select{width:100%;padding:9px 10px;font-size:14px;background:var(--bg);}
+
+  /* ---- Board settings ---- */
+  .modal-wide{max-width:520px;max-height:calc(100vh - 40px);overflow-y:auto;}
+  .settings-section{display:flex;flex-direction:column;gap:10px;}
+  .settings-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;}
+  .settings-label{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);}
+  .settings-hint{font-size:12px;color:var(--muted-2);}
+  .area-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px;}
+  .area-row{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 8px;}
+  .area-main{display:flex;align-items:center;gap:8px;}
+  .area-dot{width:22px;height:22px;border-radius:50%;border:2px solid var(--panel-2);box-shadow:0 0 0 1px var(--line);cursor:pointer;flex:none;padding:0;}
+  .area-dot[aria-expanded="true"]{box-shadow:0 0 0 2px var(--text);}
+  .area-name{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:6px;color:var(--text);padding:6px 8px;font-size:14px;font-family:'Spectral',Georgia,serif;}
+  .area-name:hover{border-color:var(--line);}
+  .area-name:focus{outline:2px solid var(--focus);outline-offset:0;background:var(--panel-2);}
+  .area-count{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;color:var(--muted-2);white-space:nowrap;}
+  .area-tools{display:flex;gap:2px;}
+  .area-tools button{background:none;border:none;color:var(--muted-2);cursor:pointer;font-size:13px;width:26px;height:26px;border-radius:5px;}
+  .area-tools button:hover:not([disabled]){color:var(--text);background:var(--panel);}
+  .area-tools button[disabled]{opacity:.3;cursor:default;}
+  .area-tools button:focus-visible,.area-dot:focus-visible,.swatch:focus-visible{outline:2px solid var(--focus);outline-offset:2px;}
+  .area-palette{display:flex;flex-wrap:wrap;gap:8px;padding:8px 2px 2px 30px;}
+  .swatch{width:24px;height:24px;border-radius:50%;border:2px solid var(--panel-2);box-shadow:0 0 0 1px var(--line);cursor:pointer;padding:0;}
+  .swatch[aria-checked="true"]{box-shadow:0 0 0 2px var(--text);}
+  .area-add{display:flex;gap:8px;}
+  .area-add input{flex:1;min-width:0;background:var(--bg);border:1px solid var(--line);border-radius:7px;color:var(--text);padding:8px 10px;font-size:14px;font-family:'Spectral',Georgia,serif;}
+  .area-add input::placeholder{color:var(--muted-2);opacity:.8;}
+  .area-add input:focus{outline:2px solid var(--focus);outline-offset:1px;border-color:var(--focus);}
+  .settings-error{color:var(--danger);font-size:12px;min-height:16px;margin:0;}
 
   /* In column direction the toolbar's flex-basis would apply to height,
      stretching the quick-add box to 480px tall — pin it back to content. */
@@ -135,11 +172,11 @@
   .gate-box p{color:var(--muted);font-size:13px;line-height:1.5;margin:0 0 16px;}
   .gate-box input{width:100%;background:var(--panel-2);border:1px solid var(--line);border-radius:7px;color:var(--text);padding:10px 12px;font-size:14px;font-family:'Spectral',Georgia,serif;}
   .gate-box input::placeholder{color:var(--muted-2);opacity:.8;}
-  .gate-box input:focus{outline:2px solid var(--consulting);outline-offset:1px;border-color:var(--consulting);}
+  .gate-box input:focus{outline:2px solid var(--focus);outline-offset:1px;border-color:var(--focus);}
   .gate-box .btn{width:100%;margin-top:10px;}
   .gate-box .btn[disabled]{opacity:.6;cursor:default;}
-  .gate-error{color:var(--youtube);font-size:12px;margin-top:10px;min-height:14px;line-height:1.4;}
-  .gate-sent{font-size:26px;color:var(--hobby);margin-bottom:4px;}
+  .gate-error{color:var(--danger);font-size:12px;margin-top:10px;min-height:14px;line-height:1.4;}
+  .gate-sent{font-size:26px;color:var(--ok);margin-bottom:4px;}
   .gate.shake .gate-box{animation:shake .3s;}
 
   .header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;justify-content:flex-end;}
@@ -175,6 +212,7 @@
     </div>
     <div class="header-right">
       <select id="boardSelect" class="hidden" aria-label="Choose board"></select>
+      <button class="btn btn-ghost btn-sm hidden" id="settingsBtn" type="button">Board settings</button>
       <div class="status-pill" id="statusPill">connecting…</div>
       <button class="btn btn-ghost btn-sm" id="signOutBtn" type="button">Sign out</button>
     </div>
@@ -188,7 +226,7 @@
 
   <div class="toolbar">
     <div class="quickadd">
-      <input type="text" id="newTitle" placeholder="Add a task or plan… e.g. Script next YouTube video" maxlength="140">
+      <input type="text" id="newTitle" placeholder="Add a task or plan…" maxlength="140">
       <select id="newArea"></select>
       <button class="btn" id="addBtn">Add</button>
     </div>
@@ -202,6 +240,32 @@
   <div class="board" id="board"></div>
 </div>
 <div class="toast" id="toast"></div>
+
+<!-- Before #modal in the DOM, so a confirmation opened from here stacks on top. -->
+<div class="modal-backdrop hidden" id="settings" role="dialog" aria-modal="true" aria-labelledby="settingsTitle">
+  <div class="modal modal-wide">
+    <h2 class="modal-title" id="settingsTitle">Board settings</h2>
+    <div class="modal-field">
+      <label for="settingsName">Board name</label>
+      <input type="text" id="settingsName" maxlength="60" autocomplete="off">
+    </div>
+    <div class="settings-section">
+      <div class="settings-head">
+        <span class="settings-label">Areas</span>
+        <span class="settings-hint">Group and colour the tasks on this board.</span>
+      </div>
+      <ul class="area-list" id="areaList"></ul>
+      <form class="area-add" id="areaAddForm">
+        <input type="text" id="areaAddName" maxlength="40" placeholder="New area, e.g. Home" autocomplete="off" aria-label="New area name">
+        <button class="btn btn-ghost btn-sm" type="submit">Add area</button>
+      </form>
+      <p class="settings-error" id="settingsError" role="status"></p>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn" id="settingsDone">Done</button>
+    </div>
+  </div>
+</div>
 
 <div class="modal-backdrop hidden" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
   <div class="modal">
@@ -227,14 +291,18 @@
   const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
   // ---- Board data -------------------------------------------------------
-  const AREA_DEFS = {
-    youtube:    {label:'YouTube',    color:'var(--youtube)'},
-    consulting: {label:'Consulting', color:'var(--consulting)'},
-    skill:      {label:'Skill Dev',  color:'var(--skill)'},
-    hobby:      {label:'Hobby / Pi', color:'var(--hobby)'},
-    invest:     {label:'Investing',  color:'var(--invest)'},
-    other:      {label:'Other',      color:'var(--other)'}
-  };
+  // Areas belong to each board (table board_areas); colours are keys into
+  // this fixed set of inks, matching the database's allowed values.
+  const INKS = [
+    {key:'madder', label:'Madder red'}, {key:'sepia', label:'Sepia'},
+    {key:'brass', label:'Brass'},       {key:'olive', label:'Olive'},
+    {key:'verdigris', label:'Verdigris'}, {key:'indigo', label:'Indigo'},
+    {key:'murex', label:'Murex purple'}, {key:'slate', label:'Slate'}
+  ];
+  const inkVar = key => `var(--ink-${INKS.some(i => i.key === key) ? key : 'slate'})`;
+  // Exports made before areas were per-board used these keys.
+  const LEGACY_AREA_NAMES = {youtube:'YouTube', consulting:'Consulting', skill:'Skill Dev',
+                             hobby:'Hobby / Pi', invest:'Investing', other:'Other'};
   const STATUSES = [
     {id:'backlog',  label:'Backlog'},
     {id:'todo',     label:'To Do'},
@@ -252,6 +320,7 @@
   let currentUser = null;
   let boards = [];
   let currentBoardId = null;
+  let areas = [];   // areas of the open board, in display order
   let collapsedParents = new Set();
   try{
     // Carry collapse state across the rename, rather than every parent
@@ -311,7 +380,7 @@
   }
 
   function modalKeydown(e){
-    if(e.key === 'Escape'){ e.preventDefault(); closeModal(null); }
+    if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeModal(null); }
     else if(e.key === 'Enter' && e.target.tagName !== 'TEXTAREA'){ e.preventDefault(); submitModal(); }
   }
 
@@ -325,10 +394,16 @@
     fields.forEach(f => {
       const wrap = document.createElement('div');
       wrap.className = 'modal-field';
-      const control = document.createElement(f.multiline ? 'textarea' : 'input');
-      if(!f.multiline) control.type = 'text';
+      const control = document.createElement(f.type === 'select' ? 'select' : f.multiline ? 'textarea' : 'input');
+      if(control.tagName === 'INPUT') control.type = 'text';
       control.id = 'modalField_' + f.name;
       control.dataset.field = f.name;
+      (f.options || []).forEach(o => {
+        const opt = document.createElement('option');
+        opt.value = o.value;
+        opt.textContent = o.label;
+        control.appendChild(opt);
+      });
       control.value = f.value || '';
       if(f.placeholder) control.placeholder = f.placeholder;
       if(f.maxLength) control.maxLength = f.maxLength;
@@ -373,7 +448,7 @@
     return {
       id: row.id,
       title: row.title,
-      area: row.area,
+      areaId: row.area_id,
       status: row.status,
       notes: row.notes || '',
       parentId: row.parent_id || null,
@@ -386,6 +461,12 @@
   function children(taskId){
     return state.tasks.filter(t=>t.parentId===taskId);
   }
+
+  const areaById = id => areas.find(a => a.id === id);
+  const areaLabel = id => (areaById(id) || {}).name || 'Unknown area';
+  const areaInk = id => inkVar((areaById(id) || {}).color);
+  const currentBoard = () => boards.find(b => b.id === currentBoardId);
+  const isOwner = (boardId = currentBoardId) => memberships.get(boardId)?.role === 'owner';
 
   function toggleCollapse(taskId){
     if(collapsedParents.has(taskId)) collapsedParents.delete(taskId);
@@ -403,12 +484,21 @@
       return;
     }
     $statusPill.textContent = 'connecting…';
-    const { data, error } = await sb.from('tasks').select('*').eq('board_id', currentBoardId);
-    if(error){
+    const boardId = currentBoardId;
+    const [{ data, error }, { data: areaRows, error: areaErr }] = await Promise.all([
+      sb.from('tasks').select('*').eq('board_id', boardId),
+      sb.from('board_areas').select('*').eq('board_id', boardId).order('position').order('created_at')
+    ]);
+    // The board was switched while this was loading; that load wins.
+    if(boardId !== currentBoardId) return;
+    if(error || areaErr){
       $statusPill.textContent = 'sync failed';
-      showToast('Could not load board: ' + error.message);
+      showToast('Could not load board: ' + (error || areaErr).message);
       return;
     }
+    areas = areaRows || [];
+    if(activeAreaFilter && !areaById(activeAreaFilter)) activeAreaFilter = null;
+    populateAreaSelect();
     state.tasks = data.map(mapRow);
     $statusPill.textContent = 'synced';
     render();
@@ -417,7 +507,7 @@
 
   async function insertTask(task){
     const { error } = await sb.from('tasks').insert({
-      id: task.id, title: task.title, area: task.area,
+      id: task.id, title: task.title, area_id: task.areaId,
       status: task.status, notes: task.notes, parent_id: task.parentId || null,
       board_id: currentBoardId, created_by: currentUser ? currentUser.id : null
     });
@@ -475,6 +565,9 @@
           removeLocal(payload.old.id);
         } else if(payload.new && payload.new.board_id === currentBoardId){
           upsertLocal(payload.new);
+        } else if(payload.new && state.tasks.some(t => t.id === payload.new.id)){
+          // Moved to another board, from here or another device.
+          removeLocal(payload.new.id);
         }
       })
       .subscribe(status => {
@@ -483,31 +576,22 @@
       });
   }
 
-  // Areas you can see on the open board. Owners see all of them; a member
-  // sees what the owner granted. The database already hides the rest — this
-  // keeps the picker and meter from offering areas that would be refused.
-  function visibleAreaIds(){
-    const m = memberships.get(currentBoardId);
-    const all = Object.keys(AREA_DEFS);
-    return (m && Array.isArray(m.visible_areas)) ? all.filter(a => m.visible_areas.includes(a)) : all;
-  }
-
   function populateAreaSelect(){
-    const areas = visibleAreaIds();
-    $newArea.innerHTML = areas.map(id => `<option value="${id}">${AREA_DEFS[id].label}</option>`).join('');
-    const canAdd = areas.length > 0;
-    $newTitle.disabled = !canAdd;
-    $newArea.disabled = !canAdd;
-    document.getElementById('addBtn').disabled = !canAdd;
-    $newTitle.placeholder = canAdd
-      ? 'Add a task or plan… e.g. Script next YouTube video'
-      : "You haven't been given access to any areas on this board";
+    const previous = $newArea.value;
+    $newArea.innerHTML = '';
+    areas.forEach(a => {
+      const opt = document.createElement('option');
+      opt.value = a.id;
+      opt.textContent = a.name;
+      $newArea.appendChild(opt);
+    });
+    if(areaById(previous)) $newArea.value = previous;
   }
 
   function areaCounts(){
     const counts = {};
-    visibleAreaIds().forEach(a => counts[a]=0);
-    state.tasks.forEach(t => { if(t.status!=='done') counts[t.area] = (counts[t.area]||0)+1; });
+    areas.forEach(a => counts[a.id] = 0);
+    state.tasks.forEach(t => { if(t.status!=='done' && t.areaId in counts) counts[t.areaId]++; });
     return counts;
   }
 
@@ -524,9 +608,8 @@
         const seg = document.createElement('div');
         seg.className = 'meter-seg';
         seg.style.width = pct+'%';
-        const def = AREA_DEFS[area] || AREA_DEFS.other;
-        seg.style.background = def.color;
-        seg.title = `${def.label}: ${count} open`;
+        seg.style.background = areaInk(area);
+        seg.title = `${areaLabel(area)}: ${count} open`;
         seg.addEventListener('click', ()=>{
           activeAreaFilter = activeAreaFilter === area ? null : area;
           render();
@@ -535,10 +618,12 @@
       });
     }
     $meterLegend.innerHTML = '';
-    visibleAreaIds().map(id => [id, AREA_DEFS[id]]).forEach(([id,def])=>{
+    areas.forEach(a=>{
+      const id = a.id;
       const item = document.createElement('div');
       item.className = 'legend-item' + (activeAreaFilter && activeAreaFilter!==id ? ' off':'');
-      item.innerHTML = `<span class="dot" style="background:${def.color}"></span>${def.label} · ${counts[id]||0}`;
+      item.innerHTML = `<span class="dot" style="background:${inkVar(a.color)}"></span><span></span>`;
+      item.lastChild.textContent = `${a.name} · ${counts[id]||0}`;
       item.addEventListener('click', ()=>{
         activeAreaFilter = activeAreaFilter === id ? null : id;
         render();
@@ -555,7 +640,7 @@
       col.dataset.status = st.id;
 
       const visible = state.tasks.filter(t => t.status===st.id
-        && (!activeAreaFilter || t.area===activeAreaFilter)
+        && (!activeAreaFilter || t.areaId===activeAreaFilter)
         && !(t.parentId && collapsedParents.has(t.parentId)));
 
       col.innerHTML = `<div class="col-head">
@@ -645,7 +730,7 @@
 
     const card = document.createElement('div');
     card.className = 'card' + (nested ? ' card-nested' : '');
-    card.style.borderLeftColor = AREA_DEFS[t.area] ? AREA_DEFS[t.area].color : 'var(--other)';
+    card.style.borderLeftColor = areaInk(t.areaId);
     card.draggable = true;
     card.innerHTML = `
       ${showBreadcrumb ? `<p class="card-parent">↳ ${parent ? escapeHtml(parent.title) : 'parent task'}</p>` : ''}
@@ -660,7 +745,7 @@
           </span>
         </button>` : ''}
       <div class="card-foot">
-        <span class="card-area">${AREA_DEFS[t.area] ? AREA_DEFS[t.area].label : 'Other'}</span>
+        <span class="card-area"></span>
         <div class="card-actions">
           ${!isSubtask ? `<button data-act="addsub" title="Add sub-task">＋</button>` : ''}
           <button data-act="edit" title="Edit">✎</button>
@@ -668,6 +753,7 @@
         </div>
       </div>`;
     card.querySelector('.card-title').textContent = t.title;
+    card.querySelector('.card-area').textContent = areaLabel(t.areaId);
     card.querySelector('.card-notes').textContent = t.notes || '+ Add note';
 
     card.addEventListener('dragstart', ()=>{
@@ -702,23 +788,80 @@
       removeTask(t.id);
       showToast('Deleted');
     });
-    card.querySelector('[data-act="edit"]').addEventListener('click', async ()=>{
-      const result = await openModal({
-        title: 'Edit task',
-        fields: [
-          {name:'title', label:'Title', value:t.title, maxLength:140},
-          {name:'notes', label:'Notes', value:t.notes, multiline:true,
-           placeholder:'Context, blockers, links — anything worth recalling later'}
-        ]
-      });
-      if(!result) return;
-      applyLocalPatch(t, {
-        title: result.title.trim() || t.title,
-        notes: result.notes
-      });
-    });
+    card.querySelector('[data-act="edit"]').addEventListener('click', ()=> editTask(t));
 
     return card;
+  }
+
+  async function editTask(t){
+    const fields = [
+      {name:'title', label:'Title', value:t.title, maxLength:140},
+      {name:'notes', label:'Notes', value:t.notes, multiline:true,
+       placeholder:'Context, blockers, links — anything worth recalling later'}
+    ];
+    // A sub-task's area and board always follow its parent's.
+    if(!t.parentId){
+      fields.push({name:'areaId', label:'Area', type:'select', value:t.areaId,
+                   options: areas.map(a => ({value:a.id, label:a.name}))});
+      if(boards.length > 1){
+        fields.push({name:'boardId', label:'Board', type:'select', value:currentBoardId,
+                     options: boards.map(b => ({value:b.id, label:b.name}))});
+      }
+    }
+    const kidCount = children(t.id).length;
+    const result = await openModal({
+      title: 'Edit task',
+      message: !t.parentId && boards.length > 1 && kidCount
+        ? `Moving it to another board takes its ${kidCount} sub-task${kidCount>1?'s':''} too.` : '',
+      fields
+    });
+    if(!result) return;
+
+    const patch = { title: result.title.trim() || t.title, notes: result.notes };
+    const moving = result.boardId && result.boardId !== currentBoardId;
+    // When moving, the area is chosen from the destination board instead.
+    if(!moving && result.areaId && result.areaId !== t.areaId){
+      patch.area_id = result.areaId;
+      t.areaId = result.areaId;
+      children(t.id).forEach(k => { k.areaId = result.areaId; });
+    }
+    applyLocalPatch(t, patch);
+    if(moving) await moveTask(t, result.boardId);
+  }
+
+  async function moveTask(t, targetBoardId){
+    const target = boards.find(b => b.id === targetBoardId);
+    const { data: targetAreas, error } = await sb.from('board_areas')
+      .select('id, name').eq('board_id', targetBoardId).order('position').order('created_at');
+    if(error || !targetAreas || !targetAreas.length){
+      showToast('Could not load areas for that board');
+      return;
+    }
+    // Keep the same area where the destination has one by that name;
+    // otherwise ask rather than guess.
+    const sameName = targetAreas.find(a => a.name.toLowerCase() === areaLabel(t.areaId).toLowerCase());
+    let areaId = sameName && sameName.id;
+    if(!areaId){
+      const pick = await openModal({
+        title: `Move to ${target.name}`,
+        message: `"${target.name}" has no "${areaLabel(t.areaId)}" area. Which area should it go in?`,
+        fields: [{name:'areaId', label:'Area', type:'select', value:targetAreas[0].id,
+                  options: targetAreas.map(a => ({value:a.id, label:a.name}))}],
+        confirmLabel: 'Move'
+      });
+      if(!pick) return;
+      areaId = pick.areaId;
+    }
+    const { error: moveErr } = await sb.from('tasks')
+      .update({ board_id: targetBoardId, area_id: areaId }).eq('id', t.id);
+    if(moveErr){
+      showToast('Could not move: ' + moveErr.message);
+      return;
+    }
+    const gone = new Set([t.id, ...children(t.id).map(k => k.id)]);
+    state.tasks = state.tasks.filter(x => !gone.has(x.id));
+    render();
+    showToast(`Moved to ${target.name}`);
   }
 
   async function editNote(t){
@@ -744,7 +887,7 @@
     const title = result.title;
     const now = new Date().toISOString();
     const task = {
-      id: uid(), title: title.trim(), area: parentTask.area, status: 'backlog',
+      id: uid(), title: title.trim(), areaId: parentTask.areaId, status: 'backlog',
       notes: '', parentId: parentTask.id, createdAt: now, updatedAt: now
     };
     state.tasks.push(task);
@@ -771,9 +914,10 @@
   function addTask(){
     const title = $newTitle.value.trim();
     if(!title) return;
-    const area = $newArea.value;
+    const areaId = $newArea.value;
+    if(!areaById(areaId)) return;
     const now = new Date().toISOString();
-    const task = {id:uid(), title, area, status:'backlog', notes:'', createdAt:now, updatedAt:now};
+    const task = {id:uid(), title, areaId, status:'backlog', notes:'', createdAt:now, updatedAt:now};
     state.tasks.push(task);
     $newTitle.value = '';
     render();
@@ -781,7 +925,17 @@
   }
 
   document.getElementById('exportBtn').addEventListener('click', ()=>{
-    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    // Areas are exported by name, so the file can be imported into any board.
+    const exported = {
+      board: (currentBoard() || {}).name || null,
+      exportedAt: new Date().toISOString(),
+      areas: areas.map(a => ({ name: a.name, color: a.color })),
+      tasks: state.tasks.map(t => ({
+        id: t.id, title: t.title, area: areaLabel(t.areaId), status: t.status, notes: t.notes,
+        parentId: t.parentId, createdAt: t.createdAt, updatedAt: t.updatedAt
+      }))
+    };
+    const blob = new Blob([JSON.stringify(exported, null, 2)], {type:'application/json'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -803,19 +957,52 @@
         const parsed = JSON.parse(reader.result);
         if(!parsed.tasks || !Array.isArray(parsed.tasks)) throw new Error('bad format');
         if(!currentBoardId) throw new Error('no board open');
+        if(!isOwner()) throw new Error('only a board owner can import');
         $statusPill.textContent = 'importing…';
-        // Scoped to the open board — import replaces this board, never the
-        // other boards you're a member of.
-        const { error: delErr } = await sb.from('tasks').delete().eq('board_id', currentBoardId);
-        if(delErr) throw delErr;
+
+        // Match areas by name; older exports used fixed keys like "youtube".
+        // Areas the board doesn't have yet are created first.
+        const fileColors = new Map((parsed.areas || []).map(a => [String(a.name).toLowerCase(), a.color]));
+        const nameOf = t => LEGACY_AREA_NAMES[t.area] || (t.area ? String(t.area).trim() : 'General');
+        const wanted = [...new Set(parsed.tasks.map(nameOf))];
+        const missing = wanted.filter(n => !areas.some(a => a.name.toLowerCase() === n.toLowerCase()));
+        if(missing.length){
+          const start = areas.length;
+          const { error: areaErr } = await sb.from('board_areas').insert(missing.map((name, i) => ({
+            board_id: currentBoardId, name: name.slice(0, 40), position: start + i,
+            color: INKS.some(k => k.key === fileColors.get(name.toLowerCase()))
+              ? fileColors.get(name.toLowerCase()) : INKS[(start + i) % INKS.length].key
+          })));
+          if(areaErr) throw areaErr;
+        }
+        const { data: boardAreas, error: listErr } = await sb.from('board_areas').select('id, name').eq('board_id', currentBoardId);
+        if(listErr) throw listErr;
+        const idFor = name => (boardAreas.find(a => a.name.toLowerCase() === name.toLowerCase()) || boardAreas[0]).id;
+
+        // Every imported task gets a fresh id. Reusing the file's ids collides
+        // with the originals whenever a board's export is imported into another
+        // board, which would fail after this board had already been cleared.
+        const newId = new Map(parsed.tasks.map(t => [t.id, uid()]));
         const rows = parsed.tasks.map(t => ({
-          id: t.id || uid(), title: t.title, area: t.area,
-          status: t.status, notes: t.notes || '', parent_id: t.parentId || null,
+          id: newId.get(t.id) || uid(), title: t.title, area_id: idFor(nameOf(t)),
+          status: t.status, notes: t.notes || '', parent_id: newId.get(t.parentId) || null,
           board_id: currentBoardId, created_by: currentUser ? currentUser.id : null
         })).sort((a,b) => (a.parent_id ? 1 : 0) - (b.parent_id ? 1 : 0));
+
+        // Scoped to the open board — import replaces this board, never the
+        // other boards you're a member of. New tasks are saved first and the
+        // old ones removed only after that succeeds, so a failed import leaves
+        // the board as it was.
+        const { data: oldRows, error: oldErr } = await sb.from('tasks').select('id').eq('board_id', currentBoardId);
+        if(oldErr) throw oldErr;
         if(rows.length){
           const { error: insErr } = await sb.from('tasks').insert(rows);
           if(insErr) throw insErr;
+        }
+        const oldIds = oldRows.map(r => r.id);
+        for(let i = 0; i < oldIds.length; i += 100){
+          const { error: delErr } = await sb.from('tasks').delete().in('id', oldIds.slice(i, i + 100));
+          if(delErr) throw delErr;
         }
         await load();
         showToast('Imported');
@@ -840,6 +1027,7 @@
   const $gateSent = document.getElementById('gateSent');
   const $boardSelect = document.getElementById('boardSelect');
   const $signOutBtn = document.getElementById('signOutBtn');
+  const $settingsBtn = document.getElementById('settingsBtn');
 
   function gateError(msg){
     $gateError.textContent = msg;
@@ -872,12 +1060,12 @@
   });
 
   // ---- Boards ----------------------------------------------------------
-  let memberships = new Map();   // board id -> { role, visible_areas }
+  let memberships = new Map();   // board id -> { role }
 
   async function loadBoards(){
     const [{ data, error }, { data: mine, error: memberErr }] = await Promise.all([
       sb.from('boards').select('*').order('created_at'),
-      sb.from('board_members').select('board_id, role, visible_areas').eq('user_id', currentUser.id)
+      sb.from('board_members').select('board_id, role').eq('user_id', currentUser.id)
     ]);
     if(error || memberErr){
       showToast('Could not load your boards: ' + (error || memberErr).message);
@@ -890,6 +1078,10 @@
                    : (boards[0] ? boards[0].id : null);
     if(currentBoardId) localStorage.setItem(BOARD_KEY, currentBoardId);
 
+    renderBoardSwitcher();
+  }
+
+  function renderBoardSwitcher(){
     $boardSelect.innerHTML = boards.map(b =>
       `<option value="${b.id}"></option>`).join('');
     [...$boardSelect.options].forEach((opt, i) => {
@@ -900,13 +1092,16 @@
     // A switcher with one option is just clutter — it appears when there's
     // somewhere to switch to.
     $boardSelect.classList.toggle('hidden', boards.length < 2);
+    // Settings and import change the whole board, so they're for owners.
+    $settingsBtn.classList.toggle('hidden', !isOwner());
+    document.getElementById('importBtn').classList.toggle('hidden', !isOwner());
   }
 
   $boardSelect.addEventListener('change', async ()=>{
     currentBoardId = $boardSelect.value;
     localStorage.setItem(BOARD_KEY, currentBoardId);
     activeAreaFilter = null;
-    populateAreaSelect();
+    renderBoardSwitcher();
     await load();
   });
 
@@ -915,6 +1110,255 @@
     await sb.auth.signOut();
     localStorage.removeItem(BOARD_KEY);
     window.location.reload();
+  });
+
+  // ---- Board settings ----------------------------------------------------
+  const $settings = document.getElementById('settings');
+  const $settingsName = document.getElementById('settingsName');
+  const $areaList = document.getElementById('areaList');
+  const $areaAddForm = document.getElementById('areaAddForm');
+  const $areaAddName = document.getElementById('areaAddName');
+  const $settingsError = document.getElementById('settingsError');
+  let openPalette = null;   // area id whose colour choices are showing
+  let settingsReturnFocus = null;
+
+  function settingsFail(message){
+    $settingsError.textContent = message;
+  }
+
+  // Name the area that's actually there ("Home"), not what was typed ("home").
+  function duplicateAreaMessage(name){
+    const existing = areas.find(a => a.name.toLowerCase() === name.toLowerCase());
+    return `There's already an area called "${existing ? existing.name : name}" on this board.`;
+  }
+
+  // Postgres rejects a duplicate name (any case); say so plainly.
+  function friendlyAreaError(err, name){
+    return /duplicate|unique/i.test(err.message) ? duplicateAreaMessage(name) : err.message;
+  }
+
+  function openSettings(){
+    if(!isOwner()) return;
+    settingsReturnFocus = document.activeElement;
+    $settingsName.value = (currentBoard() || {}).name || '';
+    $settingsError.textContent = '';
+    openPalette = null;
+    renderAreaList();
+    $settings.classList.remove('hidden');
+    $settingsName.focus();
+  }
+
+  function closeSettings(){
+    $settings.classList.add('hidden');
+    if(settingsReturnFocus && document.contains(settingsReturnFocus)) settingsReturnFocus.focus();
+  }
+
+  function refreshBoardView(){
+    populateAreaSelect();
+    render();
+  }
+
+  function renderAreaList(){
+    $areaList.innerHTML = '';
+    const counts = new Map();
+    state.tasks.forEach(t => counts.set(t.areaId, (counts.get(t.areaId) || 0) + 1));
+
+    areas.forEach((a, i) => {
+      const li = document.createElement('li');
+      li.className = 'area-row';
+      const n = counts.get(a.id) || 0;
+      li.innerHTML = `
+        <div class="area-main">
+          <button type="button" class="area-dot" aria-label="Change colour" aria-expanded="${openPalette === a.id}"></button>
+          <input class="area-name" type="text" maxlength="40" aria-label="Area name">
+          <span class="area-count">${n} task${n === 1 ? '' : 's'}</span>
+          <div class="area-tools">
+            <button type="button" data-act="up" aria-label="Move up" ${i === 0 ? 'disabled' : ''}>↑</button>
+            <button type="button" data-act="down" aria-label="Move down" ${i === areas.length - 1 ? 'disabled' : ''}>↓</button>
+            <button type="button" data-act="delete" aria-label="Delete area" ${areas.length === 1 ? 'disabled title="A board needs at least one area"' : ''}>✕</button>
+          </div>
+        </div>`;
+      li.querySelector('.area-dot').style.background = inkVar(a.color);
+      const nameInput = li.querySelector('.area-name');
+      nameInput.value = a.name;
+
+      li.querySelector('.area-dot').addEventListener('click', () => {
+        openPalette = openPalette === a.id ? null : a.id;
+        renderAreaList();
+      });
+      nameInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); nameInput.blur(); } });
+      nameInput.addEventListener('change', () => renameArea(a, nameInput));
+      li.querySelector('[data-act="up"]').addEventListener('click', () => moveArea(i, -1));
+      li.querySelector('[data-act="down"]').addEventListener('click', () => moveArea(i, 1));
+      li.querySelector('[data-act="delete"]').addEventListener('click', () => deleteArea(a));
+
+      if(openPalette === a.id){
+        const palette = document.createElement('div');
+        palette.className = 'area-palette';
+        palette.setAttribute('role', 'radiogroup');
+        palette.setAttribute('aria-label', `Colour for ${a.name}`);
+        INKS.forEach(ink => {
+          const sw = document.createElement('button');
+          sw.type = 'button';
+          sw.className = 'swatch';
+          sw.setAttribute('role', 'radio');
+          sw.setAttribute('aria-checked', String(ink.key === a.color));
+          sw.setAttribute('aria-label', ink.label);
+          sw.title = ink.label;
+          sw.style.background = inkVar(ink.key);
+          sw.addEventListener('click', () => recolourArea(a, ink.key));
+          palette.appendChild(sw);
+        });
+        li.appendChild(palette);
+      }
+      $areaList.appendChild(li);
+    });
+  }
+
+  async function renameBoard(){
+    const board = currentBoard();
+    const name = $settingsName.value.trim();
+    if(!board || !name || name === board.name){
+      $settingsName.value = board ? board.name : '';
+      return;
+    }
+    const { error } = await sb.from('boards').update({ name }).eq('id', board.id);
+    if(error){
+      settingsFail('Could not rename the board: ' + error.message);
+      $settingsName.value = board.name;
+      return;
+    }
+    board.name = name;
+    $settingsError.textContent = '';
+    renderBoardSwitcher();
+    showToast('Board renamed');
+  }
+
+  async function renameArea(a, input){
+    const name = input.value.trim().slice(0, 40);
+    if(!name || name === a.name){
+      input.value = a.name;
+      return;
+    }
+    const { error } = await sb.from('board_areas').update({ name }).eq('id', a.id);
+    if(error){
+      settingsFail(friendlyAreaError(error, name));
+      input.value = a.name;
+      return;
+    }
+    a.name = name;
+    $settingsError.textContent = '';
+    refreshBoardView();
+  }
+
+  async function recolourArea(a, color){
+    if(a.color === color) return;
+    const { error } = await sb.from('board_areas').update({ color }).eq('id', a.id);
+    if(error){
+      settingsFail('Could not change colour: ' + error.message);
+      return;
+    }
+    a.color = color;
+    $settingsError.textContent = '';
+    renderAreaList();
+    refreshBoardView();
+  }
+
+  async function moveArea(index, delta){
+    const to = index + delta;
+    if(to < 0 || to >= areas.length) return;
+    const reordered = areas.slice();
+    [reordered[index], reordered[to]] = [reordered[to], reordered[index]];
+    // Renumber from 0 so positions stay tidy, and only write what changed.
+    const changes = reordered
+      .map((a, position) => ({ a, position }))
+      .filter(({ a, position }) => a.position !== position);
+    const results = await Promise.all(changes.map(({ a, position }) =>
+      sb.from('board_areas').update({ position }).eq('id', a.id)));
+    const failed = results.find(r => r.error);
+    if(failed){
+      settingsFail('Could not reorder: ' + failed.error.message);
+      await load();
+      renderAreaList();
+      return;
+    }
+    changes.forEach(({ a, position }) => { a.position = position; });
+    areas = reordered;
+    $settingsError.textContent = '';
+    renderAreaList();
+    refreshBoardView();
+  }
+
+  async function deleteArea(a){
+    if(areas.length === 1) return;
+    const count = state.tasks.filter(t => t.areaId === a.id).length;
+    let moveTo = null;
+    if(count > 0){
+      const others = areas.filter(x => x.id !== a.id);
+      const pick = await openModal({
+        title: `Delete "${a.name}"?`,
+        message: `It has ${count} task${count > 1 ? 's' : ''}. Choose an area to move ${count > 1 ? 'them' : 'it'} to — sub-tasks go with their parents.`,
+        fields: [{name:'moveTo', label:'Move tasks to', type:'select', value: others[0].id,
+                  options: others.map(x => ({value:x.id, label:x.name}))}],
+        confirmLabel: 'Move tasks and delete',
+        danger: true
+      });
+      if(!pick) return;
+      moveTo = pick.moveTo;
+    } else {
+      const ok = await confirmDialog({
+        title: `Delete "${a.name}"?`,
+        message: 'It has no tasks, so nothing else changes.',
+        confirmLabel: 'Delete area',
+        danger: true
+      });
+      if(!ok) return;
+    }
+    const { error } = await sb.rpc('delete_board_area', { p_area: a.id, p_move_to: moveTo });
+    if(error){
+      settingsFail('Could not delete the area: ' + error.message);
+      return;
+    }
+    $settingsError.textContent = '';
+    if(openPalette === a.id) openPalette = null;
+    await load();
+    renderAreaList();
+    showToast('Area deleted');
+  }
+
+  $areaAddForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const name = $areaAddName.value.trim().slice(0, 40);
+    if(!name) return;
+    if(areas.some(a => a.name.toLowerCase() === name.toLowerCase())){
+      settingsFail(duplicateAreaMessage(name));
+      return;
+    }
+    // Pick the first ink not already used, so new areas stay distinguishable.
+    const used = new Set(areas.map(a => a.color));
+    const color = (INKS.find(i => !used.has(i.key)) || INKS[areas.length % INKS.length]).key;
+    const position = areas.length ? Math.max(...areas.map(a => a.position)) + 1 : 0;
+    const { data, error } = await sb.from('board_areas')
+      .insert({ board_id: currentBoardId, name, color, position }).select().single();
+    if(error){
+      settingsFail(friendlyAreaError(error, name));
+      return;
+    }
+    areas.push(data);
+    $areaAddName.value = '';
+    $settingsError.textContent = '';
+    renderAreaList();
+    refreshBoardView();
+  });
+
+  $settingsName.addEventListener('change', renameBoard);
+  $settingsName.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $settingsName.blur(); } });
+  $settingsBtn.addEventListener('click', openSettings);
+  document.getElementById('settingsDone').addEventListener('click', closeSettings);
+  $settings.addEventListener('mousedown', e => { if(e.target === $settings) closeSettings(); });
+  document.addEventListener('keydown', e => {
+    // Leave Escape to a confirmation dialog stacked on top, if there is one.
+    if(e.key === 'Escape' && !$settings.classList.contains('hidden') && !modalResolve) closeSettings();
   });
 
   // ---- Session ---------------------------------------------------------
@@ -933,7 +1377,6 @@
     const { error: claimErr } = await sb.rpc('claim_board_invites');
     if(claimErr) console.warn('Could not check for shared boards:', claimErr.message);
     await loadBoards();
-    populateAreaSelect();
     if(!currentBoardId){
       $statusPill.textContent = 'no board';
       showToast('Your account has no board yet — reload in a moment.');
