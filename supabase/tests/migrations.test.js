@@ -1,5 +1,5 @@
 // Replays Pinboard's migration history on a real Postgres (PGlite), then
-// applies 005 and checks data mapping, access rules and area/board rules.
+// applies 005 and 006 and checks data mapping, access rules, areas and sharing.
 const fs = require("fs");
 const path = require("path");
 const { PGlite } = require("@electric-sql/pglite");
@@ -201,6 +201,132 @@ async function main() {
   await db.exec(read("migrations/005_per_board_areas.sql"));
   const countAfter = await one(`select count(*)::int n from board_areas`);
   check("running 005 twice changes nothing", countBefore.n === countAfter.n);
+
+  // ---- 006 ----------------------------------------------------------
+  console.log("\nApplying 006…");
+  const res006 = await db.exec(read("migrations/006_board_sharing.sql"));
+  const check006 = res006[res006.length - 1].rows[0];
+  check("006's own check reports zeros", Number(check006.boards_without_an_owner) === 0 && Number(check006.old_create_policy_left) === 0, JSON.stringify(check006));
+
+  const EXIST = "44444444-4444-4444-4444-444444444444";
+  const NEWBIE = "55555555-5555-5555-5555-555555555555";
+  const SOLO = "66666666-6666-6666-6666-666666666666";
+  await db.exec(`insert into auth.users (id, email) values ('${EXIST}', 'exists@test.local');`);
+  const boardsOf = (uid) => q(`select b.name, m.role from board_members m join boards b on b.id=m.board_id where m.user_id=$1 order by b.name`, [uid]);
+
+  console.log("\nCreating boards");
+  const garden = (await as(WIFE, () => one(`select public.create_board('  Garden ') id`))).id;
+  const gardenRow = await one(`select name from boards where id=$1`, [garden]);
+  check("create_board makes the caller its owner, name trimmed",
+    gardenRow.name === "Garden" && (await one(`select role from board_members where board_id=$1 and user_id=$2`, [garden, WIFE]))?.role === "owner");
+  const gardenAreas = await q(`select name from board_areas where board_id=$1`, [garden]);
+  check("…with a General area", gardenAreas.length === 1 && gardenAreas[0].name === "General");
+  check("…visible to its owner through RLS", (await as(WIFE, () => q(`select id from boards where id=$1`, [garden]))).length === 1);
+  check("…and nobody else", (await as(SIYAD, () => q(`select id from boards where id=$1`, [garden]))).length === 0);
+  check("blank board name refused", !!(await fails(() => as(WIFE, () => q(`select public.create_board('   ')`)))));
+  check("long board name refused", !!(await fails(() => as(WIFE, () => q(`select public.create_board($1)`, ["x".repeat(61)])))));
+  const anonErr = await fails(async () => {
+    await db.exec(`set role anon;`);
+    try { await q(`select public.create_board('Sneaky')`); } finally { await db.exec(`reset role;`); }
+  });
+  check("signed-out caller can't create boards", !!anonErr, anonErr || "");
+  check("direct insert into boards no longer allowed (would make an unopenable board)",
+    !!(await fails(() => as(SIYAD, () => q(`insert into boards (name, created_by) values ('Orphan', $1)`, [SIYAD])))));
+
+  console.log("\nInviting");
+  check("member can't invite", !!(await fails(() => as(WIFE, () => q(`select public.invite_to_board($1,'x@test.local')`, [household])))));
+  check("owner of another board can't invite to this one", !!(await fails(() => as(WIFE, () => q(`select public.invite_to_board($1,'x@test.local')`, [siyadBoard])))));
+  await as(SIYAD, () => q(`select public.invite_to_board($1,' Nobody@Test.local ')`, [household]));
+  await as(SIYAD, () => q(`select public.invite_to_board($1,'exists@test.local')`, [household]));
+  const pend = await q(`select email from board_invites where board_id=$1 order by email`, [household]);
+  check("invites stored trimmed and lower-case", JSON.stringify(pend.map((p) => p.email)) === JSON.stringify(["exists@test.local", "nobody@test.local"]), JSON.stringify(pend));
+  check("inviting an existing account does NOT add them yet (no account-existence leak)",
+    !(await one(`select 1 x from board_members where board_id=$1 and user_id=$2`, [household, EXIST])));
+  await as(SIYAD, () => q(`select public.invite_to_board($1,'NOBODY@test.local')`, [household]));
+  check("inviting again is a quiet no-op", (await q(`select 1 from board_invites where board_id=$1`, [household])).length === 2);
+  const selfErr = await fails(() => as(SIYAD, () => q(`select public.invite_to_board($1,'SIYAD@test.local')`, [household])));
+  check("own email refused", !!selfErr && selfErr.includes("your own"), selfErr || "");
+  const dupErr = await fails(() => as(SIYAD, () => q(`select public.invite_to_board($1,'wife@test.local')`, [household])));
+  check("someone already on the board refused", !!dupErr && dupErr.includes("already on this board"), dupErr || "");
+  check("malformed email refused", !!(await fails(() => as(SIYAD, () => q(`select public.invite_to_board($1,'not an email')`, [household])))));
+
+  console.log("\nListing members");
+  const ownerView = await as(SIYAD, () => q(`select kind, email, role, is_you from public.list_board_members($1)`, [household]));
+  check("owner sees members (owner first, marked as you) and pending invites",
+    JSON.stringify(ownerView) === JSON.stringify([
+      { kind: "member", email: "siyad@test.local", role: "owner", is_you: true },
+      { kind: "member", email: "later@test.local", role: "member", is_you: false },
+      { kind: "member", email: "wife@test.local", role: "member", is_you: false },
+      { kind: "invite", email: "exists@test.local", role: "member", is_you: false },
+      { kind: "invite", email: "nobody@test.local", role: "member", is_you: false },
+    ]), JSON.stringify(ownerView));
+  const memberView = await as(WIFE, () => q(`select kind, email from public.list_board_members($1)`, [household]));
+  check("member sees members but not invites", memberView.length === 3 && memberView.every((r) => r.kind === "member"), JSON.stringify(memberView));
+  check("outsider sees nothing", (await as(EXIST, () => q(`select * from public.list_board_members($1)`, [household]))).length === 0);
+  check("outsider can't read invites directly either", (await as(EXIST, () => q(`select * from board_invites`))).length === 0);
+
+  console.log("\nAccepting");
+  await db.exec(`insert into board_invites (board_id, email, role) values ('${household}', 'newbie@test.local', 'member')`);
+  await db.exec(`insert into auth.users (id, email) values ('${NEWBIE}', 'newbie@test.local');`);
+  check("new signup gets their own board but doesn't join invited boards yet",
+    JSON.stringify(await boardsOf(NEWBIE)) === JSON.stringify([{ name: "My Board", role: "owner" }]), JSON.stringify(await boardsOf(NEWBIE)));
+  await as(NEWBIE, () => q(`select public.claim_board_invites()`));
+  await as(EXIST, () => q(`select public.claim_board_invites()`));
+  check("signing in to the app claims the invite (new account)",
+    JSON.stringify(await boardsOf(NEWBIE)) === JSON.stringify([{ name: "Household", role: "member" }, { name: "My Board", role: "owner" }]));
+  check("…and for an existing account",
+    !!(await one(`select 1 x from board_members where board_id=$1 and user_id=$2`, [household, EXIST])));
+  check("claimed invites are removed", !(await one(`select 1 x from board_invites where board_id=$1 and email in ('newbie@test.local','exists@test.local')`, [household])));
+
+  console.log("\nRemoving, leaving, cancelling");
+  await as(WIFE, () => q(`delete from board_members where board_id=$1 and user_id=$2`, [household, LATER]));
+  check("member can't remove someone else", !!(await one(`select 1 x from board_members where board_id=$1 and user_id=$2`, [household, LATER])));
+  await as(SIYAD, () => q(`delete from board_members where board_id=$1 and user_id=$2`, [household, LATER]));
+  check("owner can remove a member", !(await one(`select 1 x from board_members where board_id=$1 and user_id=$2`, [household, LATER])));
+  check("removed member loses the board's tasks", (await as(LATER, () => q(`select id from tasks where board_id=$1`, [household]))).length === 0);
+  await as(NEWBIE, () => q(`delete from board_members where board_id=$1 and user_id=$2`, [household, NEWBIE]));
+  check("member can leave", !(await one(`select 1 x from board_members where board_id=$1 and user_id=$2`, [household, NEWBIE])));
+  const leaveErr = await fails(() => as(SIYAD, () => q(`delete from board_members where board_id=$1 and user_id=$2`, [household, SIYAD])));
+  check("last owner can't leave", !!leaveErr && leaveErr.includes("needs an owner"), leaveErr || "");
+  await as(WIFE, () => q(`delete from board_invites where board_id=$1`, [household]));
+  check("member can't cancel invites", !!(await one(`select 1 x from board_invites where board_id=$1`, [household])));
+  await as(SIYAD, () => q(`delete from board_invites where board_id=$1 and email=$2`, [household, "nobody@test.local"]));
+  check("owner can cancel an invite", !(await one(`select 1 x from board_invites where board_id=$1`, [household])));
+
+  console.log("\nDeleting boards");
+  const gGen = (await one(`select id from board_areas where board_id=$1`, [garden])).id;
+  await as(WIFE, () => q(`insert into tasks (id,title,status,board_id,area_id) values ('g_p','Plant bulbs','todo',$1,$2)`, [garden, gGen]));
+  await as(WIFE, () => q(`insert into tasks (id,title,status,board_id,area_id,parent_id) values ('g_c','Buy bulbs','todo',$1,$2,'g_p')`, [garden, gGen]));
+  await as(WIFE, () => q(`select public.invite_to_board($1,'exists@test.local')`, [garden]));
+  check("non-owner can't delete a board", !!(await fails(() => as(SIYAD, () => q(`select public.delete_board($1,'Garden')`, [garden])))));
+  check("member can't delete a shared board", !!(await fails(() => as(WIFE, () => q(`select public.delete_board($1,'Household')`, [household])))));
+  const nameErr = await fails(() => as(WIFE, () => q(`select public.delete_board($1,'garden')`, [garden])));
+  check("wrong name refused (case matters)", !!nameErr && nameErr.includes("doesn't match"), nameErr || "");
+  check("…and the board is untouched", !!(await one(`select 1 x from boards where id=$1`, [garden])));
+  await as(WIFE, () => q(`select public.delete_board($1,' Garden ')`, [garden]));
+  const gone = await one(`select
+      (select count(*) from boards where id=$1)::int b, (select count(*) from board_areas where board_id=$1)::int a,
+      (select count(*) from tasks where board_id=$1)::int t, (select count(*) from board_members where board_id=$1)::int m,
+      (select count(*) from board_invites where board_id=$1)::int i`, [garden]);
+  check("owner deletes board with its tasks, areas, members and invites", gone.b + gone.a + gone.t + gone.m + gone.i === 0, JSON.stringify(gone));
+  check("owner's other boards untouched", JSON.stringify(await boardsOf(WIFE)) === JSON.stringify([{ name: "Household", role: "member" }, { name: "My Board", role: "owner" }]));
+
+  await db.exec(`insert into auth.users (id, email) values ('${SOLO}', 'solo@test.local');`);
+  const soloBoard = (await one(`select board_id from board_members where user_id=$1`, [SOLO])).board_id;
+  const onlyErr = await fails(() => as(SOLO, () => q(`select public.delete_board($1,'My Board')`, [soloBoard])));
+  check("can't delete your only board", !!onlyErr && onlyErr.includes("only board"), onlyErr || "");
+  await db.exec(`delete from auth.users where id='${SOLO}'`);
+  check("deleting an account isn't blocked by the owner guard", !(await one(`select 1 x from board_members where user_id=$1`, [SOLO])));
+
+  const hhTasks = (await one(`select count(*)::int n from tasks where board_id=$1`, [household])).n;
+  const myTasksBefore = (await one(`select count(*)::int n from tasks where board_id=$1`, [siyadBoard])).n;
+  await as(SIYAD, () => q(`select public.delete_board($1,'Household')`, [household]));
+  check("deleting a shared board removes it for its members too", !(await one(`select 1 x from board_members where board_id=$1`, [household])) && hhTasks > 0, `${hhTasks} tasks went`);
+  check("owner's private board untouched", (await one(`select count(*)::int n from tasks where board_id=$1`, [siyadBoard])).n === myTasksBefore);
+
+  console.log("\nRe-run safety (006)");
+  await db.exec(read("migrations/006_board_sharing.sql"));
+  check("running 006 twice is fine", (await q(`select id from boards`)).length > 0);
 
   console.log(failures ? `\nFAILED: ${failures}` : "\nALL PASSED");
   process.exit(failures ? 1 : 0);

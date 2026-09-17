@@ -157,6 +157,16 @@
   .area-add input::placeholder{color:var(--muted-2);opacity:.8;}
   .area-add input:focus{outline:2px solid var(--focus);outline-offset:1px;border-color:var(--focus);}
   .settings-error{color:var(--danger);font-size:12px;min-height:16px;margin:0;}
+  .member-email{flex:1;min-width:0;padding:6px 8px;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .member-row.pending .member-email{color:var(--muted);font-style:italic;}
+  .member-tag{font-family:'DM Mono',ui-monospace,monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted-2);white-space:nowrap;}
+  .member-empty{font-size:13px;color:var(--muted-2);padding:4px 2px;}
+  .area-tools button.tool-text{width:auto;height:24px;padding:0 8px;border:1px solid var(--line);font-family:'DM Mono',ui-monospace,monospace;font-size:10px;text-transform:uppercase;letter-spacing:.06em;}
+  .danger-zone{border-top:1px solid var(--line);padding-top:14px;}
+  .danger-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;}
+  .danger-row .settings-hint{margin:0;flex:1;min-width:200px;line-height:1.45;}
+  .btn-danger-ghost{color:var(--danger);border-color:var(--danger);}
+  #settingsName[readonly]{background:transparent;border-color:transparent;padding-left:0;}
 
   /* In column direction the toolbar's flex-basis would apply to height,
      stretching the quick-add box to 480px tall — pin it back to content. */
@@ -249,7 +259,7 @@
       <label for="settingsName">Board name</label>
       <input type="text" id="settingsName" maxlength="60" autocomplete="off">
     </div>
-    <div class="settings-section">
+    <div class="settings-section" id="areasSection">
       <div class="settings-head">
         <span class="settings-label">Areas</span>
         <span class="settings-hint">Group and colour the tasks on this board.</span>
@@ -259,7 +269,24 @@
         <input type="text" id="areaAddName" maxlength="40" placeholder="New area, e.g. Home" autocomplete="off" aria-label="New area name">
         <button class="btn btn-ghost btn-sm" type="submit">Add area</button>
       </form>
-      <p class="settings-error" id="settingsError" role="status"></p>
+    </div>
+    <div class="settings-section">
+      <div class="settings-head">
+        <span class="settings-label">People</span>
+        <span class="settings-hint">Everyone here sees and edits every task on this board.</span>
+      </div>
+      <ul class="area-list" id="memberList"></ul>
+      <form class="area-add" id="inviteForm" novalidate>
+        <input type="email" id="inviteEmail" maxlength="254" placeholder="Their email address" autocomplete="off" aria-label="Email address to invite">
+        <button class="btn btn-ghost btn-sm" type="submit">Invite</button>
+      </form>
+    </div>
+    <p class="settings-error" id="settingsError" role="status"></p>
+    <div class="settings-section danger-zone">
+      <div class="danger-row">
+        <p class="settings-hint" id="dangerHint"></p>
+        <button type="button" class="btn btn-ghost btn-sm btn-danger-ghost" id="dangerBtn"></button>
+      </div>
     </div>
     <div class="modal-actions">
       <button type="button" class="btn" id="settingsDone">Done</button>
@@ -1081,28 +1108,87 @@
     renderBoardSwitcher();
   }
 
+  const NEW_BOARD = '__new__';
+
   function renderBoardSwitcher(){
-    $boardSelect.innerHTML = boards.map(b =>
-      `<option value="${b.id}"></option>`).join('');
-    [...$boardSelect.options].forEach((opt, i) => {
-      const shared = memberships.get(boards[i].id)?.role === 'member';
-      opt.textContent = boards[i].name + (shared ? ' (shared with you)' : '');
+    $boardSelect.innerHTML = '';
+    boards.forEach(b => {
+      const opt = document.createElement('option');
+      opt.value = b.id;
+      const shared = memberships.get(b.id)?.role === 'member';
+      opt.textContent = b.name + (shared ? ' (shared with you)' : '');
+      $boardSelect.appendChild(opt);
     });
+    // Creating a board lives in the switcher, so it's always there — even
+    // with a single board, where it's the way to get a second one.
+    const create = document.createElement('option');
+    create.value = NEW_BOARD;
+    create.textContent = '+ New board…';
+    $boardSelect.appendChild(create);
     $boardSelect.value = currentBoardId || '';
-    // A switcher with one option is just clutter — it appears when there's
-    // somewhere to switch to.
-    $boardSelect.classList.toggle('hidden', boards.length < 2);
-    // Settings and import change the whole board, so they're for owners.
-    $settingsBtn.classList.toggle('hidden', !isOwner());
+    $boardSelect.classList.remove('hidden');
+    // Everyone gets settings (members see who's on the board and can leave);
+    // import replaces the whole board, so it stays with owners.
+    $settingsBtn.classList.toggle('hidden', !currentBoardId);
     document.getElementById('importBtn').classList.toggle('hidden', !isOwner());
   }
 
-  $boardSelect.addEventListener('change', async ()=>{
-    currentBoardId = $boardSelect.value;
-    localStorage.setItem(BOARD_KEY, currentBoardId);
+  async function switchBoard(id){
+    currentBoardId = id;
+    if(id) localStorage.setItem(BOARD_KEY, id);
     activeAreaFilter = null;
     renderBoardSwitcher();
     await load();
+  }
+
+  // Reload the board list and open a board. Someone left with no boards at
+  // all (they left or lost the last one) gets a fresh private one.
+  async function openBoards(preferId){
+    if(preferId) localStorage.setItem(BOARD_KEY, preferId);
+    await loadBoards();
+    if(!currentBoardId && boards.length === 0){
+      const { data, error } = await sb.rpc('create_board', { p_name: 'My Board' });
+      if(error){
+        $statusPill.textContent = 'no board';
+        showToast('Could not set up a board: ' + error.message);
+        return;
+      }
+      localStorage.setItem(BOARD_KEY, data);
+      await loadBoards();
+    }
+    if(!currentBoardId){
+      $statusPill.textContent = 'no board';
+      return;
+    }
+    activeAreaFilter = null;
+    await load();
+  }
+
+  async function newBoard(){
+    const values = await openModal({
+      title: 'New board',
+      message: 'You’ll be its owner. It starts with one area, “General” — add your own and invite people in Board settings.',
+      fields: [{ name: 'name', label: 'Board name', placeholder: 'e.g. Household', maxLength: 60 }],
+      confirmLabel: 'Create board'
+    });
+    const name = values && values.name.trim();
+    if(!name) return;
+    const { data, error } = await sb.rpc('create_board', { p_name: name });
+    if(error){
+      await alertDialog('Could not create the board', error.message);
+      return;
+    }
+    await openBoards(data);
+    showToast(`Created “${name}”`);
+  }
+
+  $boardSelect.addEventListener('change', async ()=>{
+    if($boardSelect.value === NEW_BOARD){
+      $boardSelect.value = currentBoardId || '';
+      await newBoard();
+      return;
+    }
+    await switchBoard($boardSelect.value);
   });
 
   $signOutBtn.addEventListener('click', async ()=>{
@@ -1138,14 +1224,26 @@
   }
 
   function openSettings(){
-    if(!isOwner()) return;
+    const board = currentBoard();
+    if(!board) return;
+    const owner = isOwner();
     settingsReturnFocus = document.activeElement;
-    $settingsName.value = (currentBoard() || {}).name || '';
+    $settingsName.value = board.name;
+    $settingsName.readOnly = !owner;
     $settingsError.textContent = '';
     openPalette = null;
-    renderAreaList();
+    // Members see who's on the board and can leave; the rest is for owners.
+    document.getElementById('areasSection').classList.toggle('hidden', !owner);
+    $inviteForm.classList.toggle('hidden', !owner);
+    $inviteEmail.value = '';
+    $dangerBtn.textContent = owner ? 'Delete board' : 'Leave board';
+    $dangerHint.textContent = owner
+      ? 'Deletes the board and all its tasks, for everyone on it.'
+      : 'You’ll lose access to its tasks until an owner invites you again.';
+    if(owner) renderAreaList();
+    loadMembers();
     $settings.classList.remove('hidden');
-    $settingsName.focus();
+    (owner ? $settingsName : $settingsDone).focus();
   }
 
   function closeSettings(){
@@ -1217,6 +1315,7 @@
 
   async function renameBoard(){
     const board = currentBoard();
+    if(!isOwner()) return;
     const name = $settingsName.value.trim();
     if(!board || !name || name === board.name){
       $settingsName.value = board ? board.name : '';
@@ -1351,6 +1450,212 @@
     refreshBoardView();
   });
 
+  // ---- People ------------------------------------------------------------
+  const $memberList = document.getElementById('memberList');
+  const $inviteForm = document.getElementById('inviteForm');
+  const $inviteEmail = document.getElementById('inviteEmail');
+  const $dangerBtn = document.getElementById('dangerBtn');
+  const $dangerHint = document.getElementById('dangerHint');
+  const $settingsDone = document.getElementById('settingsDone');
+  let members = [];           // rows from list_board_members
+  let membersBoardId = null;  // …and the board they belong to
+  let membersRequest = 0;     // ignore answers for a board that's no longer open
+
+  async function loadMembers(){
+    const request = ++membersRequest;
+    const boardId = currentBoardId;
+    if(membersBoardId !== boardId){
+      members = [];
+      $memberList.innerHTML = '<li class="member-empty">Loading…</li>';
+    }
+    const { data, error } = await sb.rpc('list_board_members', { p_board: boardId });
+    if(request !== membersRequest) return;
+    if(error){
+      $memberList.innerHTML = '';
+      settingsFail('Could not load who’s on this board: ' + error.message);
+      return;
+    }
+    members = data || [];
+    membersBoardId = boardId;
+    renderMembers();
+  }
+
+  function renderMembers(){
+    const owner = isOwner();
+    $memberList.innerHTML = '';
+    members.forEach(m => {
+      const pending = m.kind === 'invite';
+      const li = document.createElement('li');
+      li.className = 'area-row member-row' + (pending ? ' pending' : '');
+      li.innerHTML = `
+        <div class="area-main">
+          <span class="member-email"></span>
+          <span class="member-tag"></span>
+          <div class="area-tools"></div>
+        </div>`;
+      const email = m.email || 'Account without an email';
+      li.querySelector('.member-email').textContent = email;
+      li.querySelector('.member-email').title = email;
+      li.querySelector('.member-tag').textContent =
+        pending ? 'Invited' : m.role + (m.is_you ? ' · you' : '');
+      const tools = li.querySelector('.area-tools');
+      const tool = (label, text, onClick, cls = '') => {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.textContent = text;
+        b.setAttribute('aria-label', label);
+        b.title = label;
+        if(cls) b.className = cls;
+        b.addEventListener('click', onClick);
+        tools.appendChild(b);
+      };
+      if(owner && pending){
+        tool(`Email ${m.email} a sign-in link`, 'Send link', () => sendSignInLink(m.email), 'tool-text');
+        tool(`Cancel invite for ${m.email}`, '✕', () => cancelInvite(m));
+      } else if(owner && !m.is_you){
+        tool(`Remove ${email} from this board`, '✕', () => removeMember(m));
+      }
+      $memberList.appendChild(li);
+    });
+    if(owner && !members.some(m => !m.is_you)){
+      const li = document.createElement('li');
+      li.className = 'member-empty';
+      li.textContent = 'Just you so far. Invite someone by email to share this board.';
+      $memberList.appendChild(li);
+    }
+  }
+
+  // Sent from a separate client that keeps no session, so emailing someone
+  // else a link can never touch the owner's own sign-in.
+  let linkSender = null;
+  async function sendSignInLink(email){
+    linkSender = linkSender || supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false,
+              flowType: 'implicit', storageKey: 'pinboard-link-sender' }
+    });
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await linkSender.auth.signInWithOtp({ email, options: { emailRedirectTo: redirectTo } });
+    if(error){
+      settingsFail('Could not send the link: ' + error.message);
+      return false;
+    }
+    $settingsError.textContent = '';
+    showToast(`Sign-in link sent to ${email}`);
+    return true;
+  }
+
+  $inviteForm.addEventListener('submit', async e => {
+    e.preventDefault();
+    const email = $inviteEmail.value.trim().toLowerCase();
+    if(!email) return;
+    const board = currentBoard();
+    const { error } = await sb.rpc('invite_to_board', { p_board: board.id, p_email: email });
+    if(error){
+      settingsFail(error.message);
+      return;
+    }
+    $inviteEmail.value = '';
+    $settingsError.textContent = '';
+    await loadMembers();
+    // Same message whether or not they already use Pinboard.
+    const send = await confirmDialog({
+      title: 'Invite saved',
+      message: `${email} will see “${board.name}” the next time they sign in to Pinboard. Email them a sign-in link now?`,
+      confirmLabel: 'Send link',
+      cancelLabel: 'Not now'
+    });
+    if(send) await sendSignInLink(email);
+  });
+
+  async function cancelInvite(m){
+    const { error } = await sb.from('board_invites').delete()
+      .eq('board_id', currentBoardId).eq('email', m.email);
+    if(error){
+      settingsFail('Could not cancel the invite: ' + error.message);
+      return;
+    }
+    $settingsError.textContent = '';
+    await loadMembers();
+    showToast('Invite cancelled');
+  }
+
+  async function removeMember(m){
+    const board = currentBoard();
+    const ok = await confirmDialog({
+      title: `Remove ${m.email || 'this person'}?`,
+      message: `They lose access to “${board.name}” straight away. Tasks they added stay on the board.`,
+      confirmLabel: 'Remove',
+      danger: true
+    });
+    if(!ok) return;
+    const { error } = await sb.from('board_members').delete()
+      .eq('board_id', board.id).eq('user_id', m.user_id);
+    if(error){
+      settingsFail('Could not remove them: ' + error.message);
+      return;
+    }
+    $settingsError.textContent = '';
+    await loadMembers();
+    showToast('Removed from the board');
+  }
+
+  async function leaveBoard(){
+    const board = currentBoard();
+    const ok = await confirmDialog({
+      title: `Leave “${board.name}”?`,
+      message: 'You’ll lose access to its tasks until an owner invites you again.',
+      confirmLabel: 'Leave board',
+      danger: true
+    });
+    if(!ok) return;
+    const { error } = await sb.from('board_members').delete()
+      .eq('board_id', board.id).eq('user_id', currentUser.id);
+    if(error){
+      settingsFail('Could not leave the board: ' + error.message);
+      return;
+    }
+    closeSettings();
+    localStorage.removeItem(BOARD_KEY);
+    await openBoards();
+    showToast(`You left “${board.name}”`);
+  }
+
+  async function deleteBoard(){
+    const board = currentBoard();
+    $settingsError.textContent = '';
+    if(boards.length === 1){
+      await alertDialog('This is your only board', 'Create another board before deleting this one.');
+      return;
+    }
+    const n = state.tasks.length;
+    const others = members.filter(m => m.kind === 'member' && !m.is_you).length;
+    const values = await openModal({
+      title: `Delete “${board.name}”?`,
+      message: `This permanently deletes the board, its areas and ${n} task${n === 1 ? '' : 's'}` +
+        (others ? `, for you and the ${others} other ${others === 1 ? 'person' : 'people'} on it` : '') +
+        '. It can’t be undone — use Export JSON first if you might want the tasks back.',
+      fields: [{ name: 'confirm', label: `Type “${board.name}” to confirm`, maxLength: 60 }],
+      confirmLabel: 'Delete board',
+      danger: true
+    });
+    if(!values) return;
+    if(values.confirm.trim() !== board.name.trim()){
+      settingsFail('The name didn’t match, so nothing was deleted.');
+      return;
+    }
+    const { error } = await sb.rpc('delete_board', { p_board: board.id, p_confirm_name: values.confirm });
+    if(error){
+      settingsFail('Could not delete the board: ' + error.message);
+      return;
+    }
+    closeSettings();
+    localStorage.removeItem(BOARD_KEY);
+    await openBoards();
+    showToast(`Deleted “${board.name}”`);
+  }
+
+  $dangerBtn.addEventListener('click', () => isOwner() ? deleteBoard() : leaveBoard());
+
   $settingsName.addEventListener('change', renameBoard);
   $settingsName.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); $settingsName.blur(); } });
   $settingsBtn.addEventListener('click', openSettings);
@@ -1376,13 +1681,7 @@
     // Harmless no-op if there are none.
     const { error: claimErr } = await sb.rpc('claim_board_invites');
     if(claimErr) console.warn('Could not check for shared boards:', claimErr.message);
-    await loadBoards();
-    if(!currentBoardId){
-      $statusPill.textContent = 'no board';
-      showToast('Your account has no board yet — reload in a moment.');
-      return;
-    }
-    await load();
+    await openBoards();
   }
 
   // Fires on first load with a restored session, and again when the magic

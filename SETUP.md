@@ -91,51 +91,41 @@ Run these in order, each in the SQL Editor. All are safe to re-run.
   between boards. **Changes live data**: existing boards keep their six areas
   and every task keeps its area. Deploy the matching app and connector straight
   after it — they read the new columns.
+- `006_board_sharing.sql` — create boards, invite people, and delete boards
+  from the app (see §7). No data changes. Run it before deploying the app
+  that uses it.
 
 Before running a new migration against the live project, run the replay test
 in `supabase/tests`.
 
 ## 7. Share a board
 
-Signups are open: anyone who signs in gets their own private board. To share
-a board as well, create it and invite them. Fill in the placeholders and run
-this; nothing in it is saved to the repo. It works whether or not they've
-signed up yet.
+Everything happens in the app; no SQL needed. Signups are open, and everyone
+who signs in gets their own private board.
 
-```sql
-do $$
-declare
-  v_owner_email  text := 'YOUR-EMAIL';
-  v_member_email text := 'THEIR-EMAIL';
-  v_board_name   text := 'Household';
-  v_owner uuid; v_member uuid; v_board uuid;
-begin
-  select id into v_owner from auth.users where lower(email) = lower(v_owner_email);
-  if v_owner is null then raise exception 'No account for %', v_owner_email; end if;
+1. **Create the board.** Open the board menu in the header and choose
+   **+ New board…**. You're its owner, and it starts with one area, "General".
+2. **Invite people.** In **Board settings → People**, enter their email and
+   press **Invite**. Pinboard then offers to email them a sign-in link.
+3. **They sign in** with that email, using the link or the sign-in page. The
+   board appears in their board menu as "(shared with you)". Until then they
+   show as *Invited*, and **Send link** sends another link.
 
-  select b.id into v_board from public.boards b
-  join public.board_members m on m.board_id = b.id and m.user_id = v_owner and m.role = 'owner'
-  where b.name = v_board_name limit 1;
-  if v_board is null then
-    insert into public.boards (name, created_by) values (v_board_name, v_owner) returning id into v_board;
-    insert into public.board_members (board_id, user_id, role) values (v_board, v_owner, 'owner');
-  end if;
+The response is the same whether or not the address already has an account,
+so an invite never reveals who uses Pinboard. An invite only becomes a
+membership when that person signs in.
 
-  select id into v_member from auth.users where lower(email) = lower(v_member_email);
-  if v_member is not null then
-    insert into public.board_members (board_id, user_id, role)
-    values (v_board, v_member, 'member') on conflict (board_id, user_id) do nothing;
-    raise notice 'Added % to %', v_member_email, v_board_name;
-  else
-    insert into public.board_invites (board_id, email, role, invited_by)
-    values (v_board, v_member_email, 'member', v_owner) on conflict (board_id, lower(email)) do nothing;
-    raise notice 'Invited % — they join % when they sign up', v_member_email, v_board_name;
-  end if;
-end $$;
-```
+Also in **Board settings**:
 
-A new board starts with one area, "General". Its owner sets up the rest in
-**Board settings**.
+- Owners can remove a member (✕), cancel an invite, or **Delete board**. To
+  delete, you type the board's name. This removes the board's tasks for
+  everyone on it, and you can't delete your only board.
+- Members see who's on the board and can **Leave board**.
+
+Sign-in links use Supabase's **Magic Link** email template, the same one as
+the sign-in page. To make the email say "Pinboard", edit that template under
+Authentication → Emails. Links count against the email rate limit in
+[Rate Limits](https://supabase.com/dashboard/project/iurmlkqlasufztgtrzpf/auth/rate-limits).
 
 ## 8. The Claude connector
 

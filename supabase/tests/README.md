@@ -11,5 +11,7 @@ npm install
 npm test
 ```
 
-Uses made-up test accounts only. Add checks here before running a new
+Covers area mapping (005) and board sharing (006): who can create, invite,
+see members, remove, leave and delete. It checks that an invite never reveals
+whether an address has an account. Uses made-up test accounts only. Add checks here before running a new
 migration against the live project.
