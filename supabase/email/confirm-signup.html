@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<meta name="supported-color-schemes" content="light">
+<title>Confirm your email for Pinboard</title>
+</head>
+<!--
+  Pinboard — "Confirm signup" email template.
+  Paste into Supabase → Authentication → Email Templates → Confirm signup.
+  Subject: Confirm your email for Pinboard
+
+  This is what someone gets the first time an address is used — including an
+  invited person who has never signed in before, since the link signs them up.
+  Everything is inline and table-based: email clients strip <style> blocks,
+  web fonts and flexbox.
+-->
+<body style="margin:0;padding:0;background:#ecdfba;">
+  <!-- Inbox preview line, hidden in the message itself. -->
+  <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:#ecdfba;font-size:1px;line-height:1px;">Confirm this address to finish setting up Pinboard.</div>
+
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#ecdfba;">
+    <tr>
+      <td align="center" style="padding:32px 16px;">
+
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="max-width:480px;background:#f2e8c8;border:1px solid #c3b284;border-radius:10px;">
+          <tr><td style="height:4px;background:#1c3a52;border-radius:10px 10px 0 0;line-height:4px;font-size:4px;">&nbsp;</td></tr>
+          <tr>
+            <td style="padding:28px 28px 24px 28px;font-family:Georgia,'Times New Roman',serif;color:#1c3a52;">
+
+              <div style="font-family:'Courier New',Courier,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:#5f5e4d;padding-bottom:10px;">Pinboard</div>
+
+              <h1 style="margin:0 0 14px 0;font-size:27px;line-height:1.2;font-weight:normal;color:#1c3a52;">Confirm your email</h1>
+
+              <p style="margin:0 0 20px 0;font-size:15px;line-height:1.6;color:#3f5a67;">
+                Pinboard is a personal task board. Confirm this address to finish setting up your account — you’ll get a board of your own, plus any boards already shared with you.
+              </p>
+
+              <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px 0;">
+                <tr>
+                  <td bgcolor="#1c3a52" style="border-radius:7px;">
+                    <a href="{{ .ConfirmationURL }}" style="display:inline-block;padding:13px 26px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-weight:bold;color:#ecdfba;text-decoration:none;border-radius:7px;">Confirm and open Pinboard</a>
+                  </td>
+                </tr>
+              </table>
+
+              <p style="margin:0 0 6px 0;font-family:'Courier New',Courier,monospace;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#5f5e4d;">Or paste this into your browser</p>
+              <p style="margin:0 0 22px 0;font-size:12px;line-height:1.5;word-break:break-all;">
+                <a href="{{ .ConfirmationURL }}" style="color:#2f5d7a;text-decoration:underline;">{{ .ConfirmationURL }}</a>
+              </p>
+
+              <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                <tr><td style="border-top:1px solid #c3b284;font-size:0;line-height:0;">&nbsp;</td></tr>
+              </table>
+
+              <p style="margin:16px 0 0 0;font-size:12.5px;line-height:1.6;color:#5f5e4d;">
+                The link works once and expires in an hour. If you weren’t expecting this, ignore this email — no account is set up until the link is opened.
+              </p>
+
+            </td>
+          </tr>
+        </table>
+
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

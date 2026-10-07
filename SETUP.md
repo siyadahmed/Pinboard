@@ -122,9 +122,10 @@ Also in **Board settings**:
   everyone on it, and you can't delete your only board.
 - Members see who's on the board and can **Leave board**.
 
-Sign-in links use Supabase's **Magic Link** email template, the same one as
-the sign-in page. To make the email say "Pinboard", edit that template under
-Authentication → Emails. Links count against the email rate limit in
+Sign-in links are ordinary magic links, so they use the same email templates as
+the sign-in page. Pinboard-styled versions are in [`supabase/email`](supabase/email)
+— paste both into Authentication → Email Templates, as explained there. Links
+count against the email rate limit in
 [Rate Limits](https://supabase.com/dashboard/project/iurmlkqlasufztgtrzpf/auth/rate-limits).
 
 ## 8. The Claude connector
